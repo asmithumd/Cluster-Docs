@@ -1,0 +1,61 @@
+This is a list of steps to recover a VM from an image.
+
+1) Check the size of the VM target needed.
+
+2) Make a logical volume of equal or larger size than the images. In this case, hawcmon is being replaced.
+It has a 70GB volume size right now. Will expand to 100GB with the recovery.
+
+ lvcreate -L100G  -n hawcmonv2-disk virtual-machines
+ lvcreate -L16G   -n hawcmonv2-swap virtual-machines
+
+3) Uncompress the image into the logical volume (for example)
+
+ gunzip -c /data/serverbackup/vm/backups_falconer/hawcmon.umd.edu-disk/hawcmon.umd.edu-disk.18Jun17-064701.gz | dd of=/dev/virtual-machines/hawcmonv2-disk bs=1024k
+
+Wait a long time, since you are recovering a whole disk.
+
+4) Copy the xen configuration file with the appropriate edits. Something like this is needed to pick up the kernel and
+the correct ramdisk at boot time. Note that the kernel and ramdisk live on the server, not in the VM, so you need to move
+them out when upgrading. The old xen thing on falconer permitted booting to kernels that lived in the VM, but this does 
+not work anymore or something. Not sure, but this should work. Note that the extras line contains stuff passed to the
+kernel at boot time.
+
+ kernel      = '/opt/hawcmonv2/vmlinuz-2.6.32-358.14.1.el6.x86_64'
+ extra       = 'elevator=noop'
+ ramdisk     = '/opt/hawcmonv2/initramfs-2.6.32-358.14.1.el6.x86_64.img'
+
+Create VM instance 
+
+ xl create /etc/xen/hawcmonv2.cfg -c
+
+5) You will need to format the swap drive (which was not recovered from backup). Login as root and run:
+
+ mkswap /dev/xvda1
+
+Confirm that the swap space is available using 'top' after a reboot.
+
+6) Resize fs to match volume with (do this with the VM off)
+
+ e2fsck -f /dev/virtual-machines/hawcmonv2-disk
+ resize2fs /dev/virtual-machines/hawcmonv2-disk
+
+Rebooting should show the expanded volume. 
+
+To further expand the volume do something like this and then repeat the resize procedure.
+
+  lvextend -L+40GB /dev/virtual-machines/hawcmonv2-disk
+
+If the volume is partitioned, you may need to use 'parted' to expand the partition. For example:
+
+  parted /dev/virtual-machines/hawc07v2-disk
+  (parted) print 
+  (parted) resizepart 2 100%
+  (parted) quit
+
+Then use kpartx to view the partitions and expand the last one, since that is the only one you can expand (I think).
+ 
+  kpartx -a /dev/virtual-machines/hawc07v2-disk
+  e2fsck -f /dev/mapper/virtual--machines-hawc07v2--disk2
+  resize2fs /dev/mapper/virtual--machines-hawc07v2--disk2
+  kpartx -d /dev/virtual-machines/hawc07v2-disk
+

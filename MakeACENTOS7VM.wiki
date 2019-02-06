@@ -1,0 +1,106 @@
+1) Download a CentOS iso, and put it someplace useful.
+ 
+ # cd /opt
+ # wget https://mirror.umd.edu/centos/7/isos/x86_64/CentOS-7-x86_64-DVD-1611.iso
+
+2) `mount` it, and copy the boot image, and initrd to someplace useful
+ 
+ # mount -o loop,ro /opt/CentOS-7-x86_64-DVD-1611.iso /mnt/cos7
+ # cp /mnt/cos7/isolinux/vmlinuz /opt/c7-install-vmlinuz
+ # cp /mnt/cos7/isolinuc/initrd.img /opt/c7-install-initrd.img
+ # umount /mnt/cos7
+
+3) create your disk images. note that in this example, the volume group is called "virtual-machines"
+    
+ # lvcreate -L16G -nc7-swap virtual-machines
+ # lvcreate -L2T  -nc7-disk virtual-machines
+
+4) create your xen image configuration file. 'kernel', and 'ramdisk'
+use the images we copied in step #2. 'extra' is the secret sauce we
+need for the installer. 'inst.vnc' enables the embeded vncserver
+'inst.stage2' can be copied out of the ISO's
+'/isolinux/isolinux.cfg' file. 'earlyprintk' makes the kernel
+output Xen-aware. 'selinux=0' turns off SELinux. 'console' sets a
+Xen-aware console device. for 'disk' we use the images we created
+in step #3, and the iso we downloaded in step #1
+ 
+ # cat > /etc/xen/newvm.cfg 
+ 
+ name    = ‘newvm’
+ kernel  = ‘/opt/c7-install-vmlinuz’
+ ramdisk = ‘/opt/c7-install-initrd.img’
+ extra   = 'inst.vnc vncpassword="letmein" inst.stage2=hd:LABEL=CentOS\\x207\\x20x86_64 earlyprintk=xen selinux=0 console=hvc0'   
+ 
+ maxmem = 2048
+ memory = 1024
+ vcpus=2
+  
+ vif = [ 'bridge=xenbr0, mac=00:aa:0a:14:01:9b' ]  
+  
+ disk = [ 'file:/dev/virtual-machines/c7-root,xvda,w',
+          'file:/dev/virtual-machines/c7-swap,xvdb,w',
+          'file:/opt/CentOS-7-x86_64-DVD-1611.iso,xvdc,r' ] 
+ 
+ on_poweroff = 'destroy'
+ on_reboot   = 'restart'
+ on_crash    = 'restart'
+ 
+ ^D
+  
+5) create/boot the VM (the -c dumps you into the console to start)
+ 
+ # xl create /etc/xen/newvm.cfg -c
+  
+6) connect to the VM's vncserver. on the Mac use Finder->Go->Connect
+to Server... (or Cmd-K). use the url 
+
+ 'vnc://vm-ip-address:5901'
+ 
+7) install as normal. don't forget to partition your "disks" 
+ 
+8) at the end of install. shutdown the VM. you may have to "destroy" (remove the instance, not the data) it.
+ 
+ # xl destroy newvm 
+ 
+9) create device nodes for the partitions in your VM's disk
+ 
+ # kpartx -a /dev/virtual-machines/c7-disk
+ 
+10) mount the partition that has the `/boot` directory
+  
+ # mount -o loop,ro /dev/mapper/c7-disk1 /mnt/
+  
+11) Copy the kernel and initrd to someplace useful. Copy the grub.cfg
+for later reference.
+ 
+ # mkdir /opt/VMNAME
+ # cp /mnt/boot/vml* /opt/VMNAME/
+ # cp /mnt/boot/init* /opt/VMNAME
+ # cp /mnt/boot/grub2/grub.cfg /opt/VMNAME
+ # umount /mnt
+ 
+12) Remove the device nodes you created in step #9  
+ 
+ # kpartx -d /dev/virtual-machines/c7-disk 
+ 
+13) IMPORTANT: edit your VM's config, or else you'll just boot to the
+installer again. change 'kernel' and 'ramdisk' to the files we
+copied in step #11. change 'extras' to what's in the grub.cfg we
+copied. you may or may not, want to comment out the ISO in the
+'disk' section. you can always add an ISO on-the-fly with `xl
+block-attach` later. It should look something like this:
+
+ kernel = '/opt/hawc07v2/vmlinuz-3.10.0-514.el7.x86_64'
+ ramdisk = '/opt/hawc07v2/initramfs-3.10.0-514.el7.x86_64.img'
+ extra = 'root=UUID=0b8cecf2-16a9-44e6-b18d-9c0ca9f6b31b ro crashkernel=auto selinux=0 console=hvc0 LANG=en_US.UTF-8'
+ 
+14) boot your new CentOS 7 VM!
+ 
+ # xl create /etc/xen/newvm.cfg
+
+15) Expand size of VM - With VM off, run the following:
+
+  # lvexpand -L+50GB /dev/virtual-machine/VMNAME-disk    # expand the logical volume
+  # user 'parted' to expand the partition containing the data (probably needs to be the last one)
+  # extendfs /dev/mapper/PARTION_NAME     # this works for ext4 partitions
+

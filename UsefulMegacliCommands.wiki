@@ -1,0 +1,42 @@
+List all the physical disks:
+
+  megacli -PDList -a0
+
+Find a bad drive:
+
+  megacli -PDList -a0 |grep -A20 -B20 "Failed"
+
+List all the RAID sets:
+
+  megacli -LDInfo -Lall -aALL
+
+List Fres Space. Use this to make sure that all the space is being used.
+
+  megacli -CfgFreeSpaceInfo -a0
+
+Silence alarms:
+
+  megacli -AdpSetProp AlarmSilence -aALL
+
+Make a drive good, array XX, drive YY:
+ 
+  megacli -PDMakeGood -PhysDrv [XX:YY] -a0
+
+Suppress Alarm:
+
+  megacli -AdpSetProp AlarmSilence -a0
+
+Start/Stop a port light red to identify drive:
+
+  megacli -PDLocate -start -physdrv[XX:YY] -aAll
+  megacli -PDLocate -stop  -physdrv[XX:YY] -aAll
+
+Show Progress on a rebuilding drive:
+
+  megacli -PDRbld -ShowProg -PhysDrv [XX:YY] -a0
+
+Recover event log and look up the errors. Error codes following "Sense" can be found at link.
+
+  megacli -AdpEventLog -GetLatest 100 -f events.log -aALL
+  [http://en.wikipedia.org/wiki/Key_Code_Qualifier  Key Code Qualifier]
+

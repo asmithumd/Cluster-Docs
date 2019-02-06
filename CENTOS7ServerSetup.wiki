@@ -1,0 +1,71 @@
+This page describes how to setup a CentOS 7 server for the UMD environment
+
+1) Update Nameserver (/etc/bind/namedb...) and DHCP server (/etc/dhcpd/dhcp.conf) to accommodate the new server's GB interface. 
+   If this is a new machine, then you will need to add it to netgroup to pick up NFS mounts.
+
+2) Install CentOS 7 using a network install option using URL (http://vault.centos.org/7.4.1708/os/x86_64/). 
+   Configure the system for "Infrastructure Server".
+
+3) Run automated UMD environment configuration script:
+
+  scp root@maple:/export/disk01/software/setup/centos7/setup.server.sh .
+  ./setup_server.sh
+
+This script will take about 10min to run and require you to type the root password about 7 times. Note, a reboot is required to 
+disable SELINUX, which is required for public key logins. 
+
+5) For Infiniband, follow the instructions in this file:
+
+  root@maple:/export/disk01/software/setup/setup_files/setup.infiniband.sh
+
+Infiniband does not work properly unless you remove /etc/modprobe.d/ko2iblnd.conf. This is a new feature
+of the installer and contains settings which are in conflict with existing servers.
+
+7) Set system type: /etc/SYSTEMTYPE: H - HAWC, C- Compute Node, D - Data server, W - Workstation
+
+  echo "HC" > /etc/SYSTEMTYPE
+
+8) Set Message of the Day:
+
+  vi /etc/motd # should be name of server
+
+=== Below this line needs work ===
+
+9) Set auto.master to use _ib if infiniband node.
+
+10) If the machine will be used as a compute node (aspen), then it will need to have a scratch disk. Assuming the disk is 
+/dev/sdb, these commands will set it up. But first, use fdisk to create partition sdb1.
+
+  mkfs.ext4 -m 0 /dev/sdb1
+  e2label /dev/sdb1 local
+  mkdir /local
+  echo "LABEL=local             /local                  ext4    defaults        1 2" >> /etc/fstab
+  mount -a 
+  chmod 1777 /local
+
+
+11) Install Slurm.
+
+12) For Infiniband nodes, mount volumes on boot: add to rc.local:
+
+ # mount Lustre file systems
+ /disk01/software/setup/lustre/MountLustre 
+
+Finally, if you need to reboot a Lustre/IB node, it will hang on unmounting Lustre due to bugs, unmount using the magic killer death reboot:
+
+  echo b > /proc/sysrq-trigger
+
+== Install MegaCli - for disk servers == 
+ 
+* Install megacli, the LSI Megaraid utility: 
+
+  rpm -ivh /data/disk01/software/megaraid/*.rpm
+
+* Put megacli in root's path: 
+
+  ln -s /opt/MegaRAID/VmwareKL/MegaCliKL /usr/local/bin/megacli
+
+* You will need these packages for MegaCli: 
+
+  yum -y install glibc.i686 libncurses.so.5 libstdc++.so.6
+

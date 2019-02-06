@@ -1,0 +1,48 @@
+This is a list of the UMD critical systems:
+
+== Public Interfaces Servers ==
+
+* '''pa-pub.umd.edu''': This is the primary public gateway to the umd Particle Astrophysics computing environment, which included both HAWC and IceCube resources. Login to this computer and use it to continue to other places where you do computing:
+
+* '''pa-data.umd.edu''': This computer is configured like pa-pub, as a public interface, but is intended to be used for large scale data transfers. It limits access from addresses that can access it for security reasons.
+
+== Computers for people to use ==
+
+* '''Sequoia''': A computer that lives on the private network that is a designated play area for code development. Abuse sequoia as you wish.
+
+* '''Mckenzie''': The server for the batch system (slurm). Feel free to compile and run test programs here. Please do not abuse mckenzie, as it is the DB server server for the slurm system. This is where you should go to submit jobs.
+
+* '''Aspen[01-25]''' Array of compute nodes with more than 1000 cores.
+
+== Other Servers ==
+
+* '''Walnut''': Lustre NFS server. Makes Luster disks available through GB network using NSF.
+
+* '''Baobab''': Home disk server. To be replace by maple
+
+* '''Ash''': Backup server. storehouse for backups of Lustre metadata and VMs
+
+* '''Aviary''': VM server. 
+
+* '''Falconer''': Old VM server.
+
+== Lustre Servers ==
+
+* '''Elm''': Metadata server for v2.6 Luster system
+
+* '''Macadamia, Pistachio, Beech''': Servers for hawc04 which is also used as scratch
+
+* '''Willow, Spruce, Cedar''': Servers for hawc02
+
+* '''Oak, Chestnut, Almond, Hickory''': Servers for hawc03
+
+* '''Hazel''': Metadata server for v2.8 Lustre system
+
+* '''Pecan, Cashew, Pine, Brazil''': Servers for new hawc01
+
+== Test Systems == 
+
+These machines are used to test new hardware (RAID controllers, disk arrays etc) and also new software versions prior to deployment on production systems. They are named for weeds, where production servers are named for trees.
+
+* '''Foxtail, Crabgrass''': Client/Server combination for testing.
+

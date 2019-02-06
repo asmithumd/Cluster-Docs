@@ -1,0 +1,20 @@
+Create a volume:
+  
+  # lvcreate -L 50MB new_vg
+
+Initialize a volume for use by LVM:
+
+  # pvcreate /dev/<partition>
+
+Display Physical Volumes:
+
+  # pvdisplay
+
+Scan physical devices and show info:
+
+  # pvscan
+
+Display logical volumes:
+
+  $ lvdisplay
+

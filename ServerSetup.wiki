@@ -1,0 +1,112 @@
+= Server Setup =
+
+
+These are the instruction for installing CentOS, Lustre, Infiniband. Skip steps that don't apply.
+
+====1) Pre-install preparations ====
+
+Update Nameserver and DHCP server to accommodate the new server's GB interface. If this is a new machine, then you will need to add it to netgroup to pick up NFS mounts. It is quite useful to setup the name server properly prior to network installation of the OS, so that the network and system name are automatically setup and need not be changed after the fact.
+
+====2) Install CentOS ====
+
+Install CentOS 6.8 using URL (http://archive.kernel.org/centos-vault/6.8/os/x86_64/). Configure the system for "Basic Server". The easiest way to do this is to boot to a net install image and select the URL above for "URL install".
+
+==== 3) Configure UMD environment ====
+
+Run automated UMD environment configuration script:
+
+ scp root@maple:/export/disk01/software/setup/setup_files/setup.server.sh .
+ ./setup_server.sh
+
+This script will take about 10min to run and require you to type the root password about 7 times.
+Finish with a general system update to get everything up to speed with CentOS 6.8
+  
+ yum -y update
+
+This script will take about 10min to run and require you to type the root password about 7 times.
+
+====4) Lustre Support ====
+
+ To support Lustre and zfs. I don't use zfs, but this release of Lustre supports it 
+and requires it to install to satisfy the dependencies. 
+
+ cp /data/disk01/software/setup/lustre/yum/lustre.repo /etc/yum.repos.d/
+ rpm -i /data/disk01/software/setup/lustre/yum/zfs-release.el6.noarch.rpm
+
+To install lustre:
+
+ yum -y --skip-broken install lustre-tests
+ yum -y install kernel-2.6.32-573.12.1.el6_lustre.x86_64
+
+This will install the lustre package and force the installation of the kernel. The explicit 
+install of the kernel is needed as it is older than the newest el6 kernel that is already installed.
+
+There is a module that conflicts with Lustre and the Infiniband. Get rid of it:
+  
+  mv /etc/modprobe.d/ko2iblnd.conf /root/
+
+====5) Infiniband Setup ====
+
+For Infiniband, follow the instructions in this file:
+
+  scp root@maple:/export/disk01/software/setup/lustre28/setup.infiniband.sh .
+
+See [[IB network assignments v28]]  for more about choosing an address
+
+Infiniband does not work properly unless you remove /etc/modprobe.d/ko2iblnd.conf. This is a new feature
+of the installer and contains settings which are in conflict with existing servers.
+
+====6) Firstboot ====
+
+Turn off 'firstboot': 
+
+  chkconfig firstboot off
+
+====7) System ID ====
+Set system type: /etc/SYSTEMTYPE: H - HAWC, C- Compute Node, D - Data server, W - Workstation
+
+  echo "HC" > /etc/SYSTEMTYPE
+
+====8) MOTD ====
+Set Message of the Day:
+
+  vi /etc/motd # should be name of server
+
+====9) Setup automount ==== 
+Set auto.master to use _ib if infiniband node.
+
+====10) Setup local cache for compute nodes====
+If the machine will be used as a compute node (aspen), then it will need to have a scratch disk. Assuming the disk is 
+/dev/sdb, these commands will set it up. But first, use fdisk to create partition sdb1.
+
+  mkfs.ext4 -m 0 /dev/sdb1
+  e2label /dev/sdb1 local
+  mkdir /local
+  echo "LABEL=local             /local                  ext4    defaults        1 2" >> /etc/fstab
+  mount -a 
+  chmod 1777 /local
+
+
+11) Install Slurm:
+
+Go to your slurm-configs directory (/disk01/software/setup/slurm-configs), run:
+  sudo ./node-update-slurm.sh
+(the general install notes can be found in [http://private.hawc-observatory.org/svn/hawc/sandbox/riviere/slurm/slurm-configs/SLURM-INSTALL SLURM-INSTALL])
+
+12) For Infiniband nodes, mount volumes on boot: add to rc.local:
+
+ # mount Lustre file systems
+ /disk01/software/setup/lustre28/MountLustre 
+
+Finally, if you need to reboot a Lustre/IB node, it will hang on unmounting Lustre due to bugs, unmount using the magic killer death reboot:
+
+  echo b > /proc/sysrq-trigger
+
+13) Install MegaCli - for disk servers only 
+  
+Install megacli (LSI MegaRAID utility) and additional packages needed, and put it in the path of root: 
+
+  rpm -ivh /data/disk01/software/megaraid/*.rpm
+  yum -y install glibc.i686 libncurses.so.5 libstdc++.so.6
+  ln -s /opt/MegaRAID/VmwareKL/MegaCliKL /usr/local/bin/megacli
+

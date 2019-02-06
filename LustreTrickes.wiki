@@ -1,0 +1,65 @@
+The following is a list of tricks to diagnose problems on Lustre systems:
+
+= Find Damaged Files =
+
+It is sometimes the case that the OSS file systems get corrupted and there is data loss. In this case, the 
+file metadata will still exist, but the contente will not. This can be seen by a user as the file appearing
+with a bunch of '???' when 'ls -l' is run. For example:
+
+ -rw-r--r-- 1 hawc hawc 12618958 Feb 27 18:43 diag_run006044_00112.root
+ -rw-r--r-- 1 hawc hawc 12584660 Mar  1 06:54 diag_run006044_00113.root
+ -rw-r--r-- 1 hawc hawc 12606090 Feb 27 19:42 diag_run006044_00114.root
+ -????????? ? ?    ?           ?            ? diag_run006044_00115.root
+ -rw-r--r-- 1 hawc hawc 12593689 Feb 28 23:06 diag_run006044_00116.root
+ -rw-r--r-- 1 hawc hawc 12610453 Feb 28 13:12 diag_run006044_00117.root
+ -rw-r--r-- 1 hawc hawc 12614081 Feb 28 21:28 diag_run006044_00118.root
+
+
+If this happens, the data is likely lost. Recover from backup. You can find these 
+files in a large file system with the simple command:
+
+ find . -nouser
+
+This finds files that don't have a valid user ID for the file's owner. 
+
+= Where is My file stored = 
+
+It is sometimes helpful to know where stuff is stores. In particular, if you
+find a corrupt file, it is helpful to trace it back to a problematic volume that 
+should be repaired or replaced.
+
+To find a where a file is stored:
+
+ lfs getstripe <filename>
+
+The field called 'ondidx' is the number of the volume where the file is stored. You can 
+trace this number to a physical volume using the command:
+
+  lfs df
+
+= Running fsck on lustre volumes =
+
+First check volumes to see if they have errors:
+  
+ e2fsck -fn /dev/mapper/vg_hawcmdt-lvmgs 
+
+here the '-f' means force a check and '-n' means make no changes to the device.
+
+= On MDT recovery =
+
+Sometimes after a system reboot, the meta data server (MDS), hazel, goes into a reboot 
+cycle. The reboots are triggered by mounting the meta data targets (MDTs). This seems
+to be solved by making sure all clients and OSTs are down prior to mounting. It also 
+may be requited that you do an e2fsck on the drives. You can force it with '-f'. Test 
+if it is needed with '-n' and prune with '-p'.
+
+= Clean Lustre Shutdown = 
+
+The best way to do a clean shutdown is to do the following:
+
+ 1) Run umount on clients
+ 2) Run umount on MDS (unmount MDTs)
+ 3) Run umount on OSS
+
+This was the recommendation of this web link: http://wiki.lustre.org/Starting_and_Stopping_Lustre_Services
+

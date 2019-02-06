@@ -1,0 +1,732 @@
+= Creating Accounts =
+
+There are at least two steps:
+
+1.  Create the account in NIS on miranda 
+
+2.  Add home directory on baobab
+
+2.5 Copy DOT_bashrc and DOT_bash_profile from /disk01/software/setup/ to local directory 
+
+3.  Set password on baobab 
+
+4.  Add quota limits on baobab
+
+5.  Add .forward file
+
+6.  Add user to slurm on  mckenzie
+
+8.  Notify the user
+
+== Create a NIS account on Miranda ==
+
+* Become root on miranda and change directory to /var/yp
+* Add a new entry to yp_src/passwd at the bottom.  Use group ID 100 and use the previous UID incremented by 1.  Make sure that the home directory is in /data/disk01/home and the directory name is the same as the user name.
+* Add a corresponding entry into yp_src/shadow.  Use the new user name and copy everything after the colon from the previous line.
+* type "make" to update the NIS database
+
+== Create a home directory and password on baobab ==
+
+* Become root on baobab and change directory to /export/disk01/home
+* Make the new home directory
+* Copy over a useful .bashrc
+* Make the new directory owned by the new user:
+
+ chown -R xxxx.users xxxx (where xxxx is the username)
+
+== Set password on baobab ==
+
+* Set the password:
+
+ yppasswd xxxx
+
+== Add the quota limit ==
+
+As root on baobab, do:
+
+ edquota xxxx
+
+And set the limits appropriately.  Local users get higher limits.  Local user:
+
+ jbraun    -- 41654276 60000000 70000000         209708 1000000 1100000
+
+Remote user:
+
+ marinel   -- 18680112 20000000 30000000         176736 1000000 1100000
+
+== Add forward file (optional) ==
+ This is only needed for users who do not have accounts on UMDGRB
+ * create a file named .foward in the user's home directory containing the user's email address
+ * Make the file owned by the user
+   chown xxxx ~xxxx/.forward  Where xxxx is the user name
+
+== Create an account on umdgrb (optional) ==
+
+* Become root on umdgrb
+* Add the user account:
+
+ adduser xxxx
+
+* Set the password:
+
+ passwd xxxx
+
+== Add user to slurm on  mckenzie (optional) ==
+* become root on mckenzie
+* add user to slurm
+
+ sacctmgr create user name=xxxx account=users cluster=blackbox
+
+Where xxxx is user name.
+
+== Notify the user ==
+
+I try to separate pa-pub.umd.edu, the username, and the initial password as much as possible, as some users probably do not update their password as requested.  I send a form letter similar to:
+
+Hi xxxx,
+
+I've created an account for you on pa-pub.umd.edu
+with your preferred user name.  Your stating password is
+PPPPPPP. Please login right away using ssh and change your password
+using the command 'passwd'. Keep your password safe and don't share it
+with anyone. For more info on UMD computing resources, see
+
+http://private.hawc-observatory.org/wiki/index.php/HAWC_Computing
+
+== Quotas ==
+
+Users have a quota on their home directory usage.  A user can view their quota status with
+
+ [jbraun@sequoia:~ 638]$ quota
+ Disk quotas for user jbraun (uid 884): 
+      Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+ baobab:/export/disk01
+                 41654272  60000000 70000000          209708  1000000 1100000
+
+* blocks: KB used in the filesystem
+* quota: Soft quota. Threshold, in KB, that can be surpassed for 7 days before the user is no longer able to create/edit files
+* limit: Hard quota, in KB. A user cannot create or edit files if at the hard quota
+
+* files: Number of files in the filesystem belonging to the user.
+* quota: Soft files quota.
+* limit: Hard files quota.
+
+To see quotas for all users, do:
+
+ [root@baobab jbraun]# repquota -u /export/disk01/
+ Block grace time: 7days; Inode grace time: 7days
+                         Block limits                File limits
+ User            used    soft    hard  grace    used  soft  hard  grace
+ ----------------------------------------------------------------------
+ root      -- 13328200       0       0           1695     0     0       
+ nfsnobody --   79996       0       0           3390     0     0       
+ jbraun    -- 41654276 60000000 70000000         209708 1000000 1100000       
+ chuan     -- 3207320 20000000 30000000           7382 1000000 1100000
+
+Zero limits indicate no quota is in place.  <b>NEW USERS HAVE NO QUOTA BY DEFAULT.  YOU HAVE TO ENABLE IT.</b>    
+
+== Changing a quota ==
+
+As root on baobab, do:
+
+ [root@baobab jbraun]# edquota jbraun
+
+Update the fields and save.  The changes will be propagated to the database.
+
+=== Over Quota ===
+
+admin@umdgrb.umd.edu receives a message when a user goes over quota.  The messaging configuration is in /etc/warnquota.conf on baobab, and warnquota is run daily by cron.
+
+= Disposition of Disks =
+
+== NFS Disks on dorado ==
+
+There are two disks currently served by dorado.  Both are NFS mounted:
+
+=== /data/lustrebackup ===
+
+This is the hardware that used to serve scratch02.  Its only current purpose is backing up the lustre metadata server (because it would not be wise to store the backup on the Lustre volume...).  It has 1 TB disks.  There is a black disk array in that same rack with 1 TB disks that can be used as spares.
+
+=== /data/raw53 and /data/montecarlo ===
+
+These volumes are 4 TB on a mostly empty black disk array with 2 TB disks.  I wanted to eventually transfer this data to Lustre and make those disks available.
+
+== Two disk arrays on orange ==
+
+There are two unused black disk arrays on orange with 12 2 TB disks each.  Those disks are currently unused and can be used as spares, as we're reaching the life expectancy for many of the 2 TB drives we initially installed 4 years ago.  I had envisioned placing these disks in a new disk array chassis to expand the current Lustre volume.
+
+== Lustre disks ==
+
+The Lustre disks are on almond, walnut, and chestnut.  We have 2x24 4 TB disks, 2x24 3 TB disks, and 5x24 2 TB disks.  There is one 4 TB spare in my office.  Andy ordered 3 TB spares.  All arrays are RAID-6.  Two arrays on walnut and two arrays on chestnut are in a 24-span RAID6 (22 data disks, 2 parity disks).  All the rest are split into two 12-disk spans.  I recommend always using 12-disk spans in the future.
+
+= Managing disks with megacli =
+
+MegaCli is the command line interface to the LSI RAID controller cards.  It is powerful but extremely cumbersome.  You need to install it on newly-commissioned disk servers.  The megacli rpms are in /data/disk01/software/megaraid/:
+
+ rpm -ivh /data/disk01/software/megaraid/*.rpm
+ yum -y install glibc.i686 libncurses.so.5 libstdc++.so.6
+ ln -s /opt/MegaRAID/VmwareKL/MegaCliKL /usr/local/bin/megacli
+
+Copy the hourly disk check CRON entry:
+
+ scp root@baobab.private.pa.umd.edu:"/export/disk01/software/setup/setup_files/cron.hourly/*" /etc/cron.hourly/
+
+== Find a failed disk ==
+
+ /usr/local/bin/megacli -PDList -aAll | grep -A20 -B20 Failed
+ <b>Enclosure Device ID: 8</b>
+ <b>Slot Number: 15</b>
+ Drive's postion: DiskGroup: 1, Span: 0, Arm: 2
+ Enclosure position: 1
+ Device Id: 23
+ WWN: 5000c500601639f4
+ Sequence Number: 3
+ Media Error Count: 1
+ Other Error Count: 0
+ Predictive Failure Count: 0
+ Last Predictive Failure Event Seq Number: 0
+ PD Type: SATA
+ <b>Raw Size: 3.638 TB [0x1d1c0beb0 Sectors]</b>
+ Non Coerced Size: 3.637 TB [0x1d1b0beb0 Sectors]
+ Coerced Size: 3.637 TB [0x1d1b00000 Sectors]
+ Emulated Drive: Yes
+ <b>Firmware state: Failed</b>
+ Commissioned Spare : No
+ Emergency Spare : No
+ Device Firmware Level: CC52
+ Shield Counter: 0
+ Successful diagnostics completion on :  N/A
+ SAS Address(0): 0x50012be00007c95a
+ Connected Port Number: 1(path0)
+ Inquiry Data: W3001E0ZST4000DM000-1F2168                      CC52
+ FDE Capable: Not Capable
+ FDE Enable: Disable
+ Secured: Unsecured
+ Locked: Unlocked
+ Needs EKM Attention: No
+ <b>Foreign State: None</b>
+ Device Speed: 6.0Gb/s
+ Link Speed: 6.0Gb/s
+ Media Type: Hard Disk Device
+ Drive Temperature :26C (78.80 F)
+ PI Eligibility:  No
+ Drive is formatted for PI information:  No
+
+You'll see that it is device 8:15 that failed, and it
+is a 4 TB drive (3.638 --> 4 TB).  The slots in
+the array are numbered from left to right and
+top to bottom, 4 disks wide and 6 disks high.
+So device 15 is second from the right in the
+fourth row from the top (numbers all start
+at 1, not zero).  None of this is very important
+because the bay with the bad drive should be
+flashing.  Let's make it flash, just in case
+it isn't:
+
+ megacli -PDLocate -start -physdrv[8:15] -aAll
+
+In some case, the disk may not fail though it is
+removed from the raidset due to pre-cogition by the
+RAID controller. Actually, the raid controller looks
+at the SMART information and deduces that the disk
+may be unreliable and excludes it. In this case, 
+the drive is identified as "Critical" and not as 
+"Failed", so the above command line will not locate
+the dead drive. When this happens, look for the 
+drive with field  
+
+"Drive has flagged a S.M.A.R.T alert : Yes"
+
+== Replace a drive ==
+
+Use the SansDigital key on the right side of
+the top shelf of the cabinet to get access to the drive.
+Replace the drive, and the rebuild will start automatically.
+If you replace a drive with one that was previously in an LSI MegaRAID array, or pull out a drive and immediately reinstall it, you need to clear the configuration information from the drive before it will rebuild:
+
+ megacli -CfgForeign -Clear -aAll
+
+Then set it as a hot spare to start rebuilding:
+
+ megacli -PDHSP -Set -PhysDrv [EE:XX] -aAll
+
+where EE is the enclosure ID and XX is the disk ID that was just added.
+You can monitor the rebuid progress with the command:
+
+ megacli -PDRbld -ShowProg -PhysDrv [EE:XX] -a1
+
+== Creating a new RAID volume ==
+
+Always use the command line tool to create a new disk array.  The BIOS tool is awful.  To add a RAID6 volume on adapter 1 with 512kB stripe size and using disks 1-12 (the first 12 disks), do:
+
+ megacli CfgLDAdd -R6[24:1,24:2,24:3,24:4,24:5,24:6,24:7,24:8,24:9,24:10,24:11,24:12] WT RA Direct -strpsz512 -a1
+
+Where 24 is the enclosure ID.  You can find the enclosure ID with
+
+ /usr/local/bin/megacli -PDList -aAll
+
+You'll have to do the same with disks 13-24.  Don't screw up the command, as you can potentially delete an existing volume.  The new volume will initialize in the background.
+
+== Turning off the alarm ==
+
+The current alarm that I can't seem to turn off permanently (1 second on,
+3 seconds off) indicates that a hot spare was brought
+online and is innocuous.  I silence it with:
+
+ megacli -AdpSetProp AlarmSilence -a1
+ megacli -AdpSetProp AlarmSilence -a0
+
+== Managing an Array that Goes Offline ==
+
+If 3 or more disks from the RAID6 array are lost, the array goes offline.  In at least two occasions, a large number of disks have spontaneously gone offline, even though the disks themselves are fine.  The disks are not recognized when they come back online.  To resolve this, you need to check which drives are offline with:
+
+ megacli -PDList -aALL
+
+and set all of the offline disks back to the online state:
+
+ megacli -PDMakeGood -PhysDrv[EE:XX] -aAll
+
+where EE is the enclosure ID and XX is the disk ID.  Then import the RAID configuration information contained on the disks:
+
+ megacli -CfgForeign -Scan -aAll
+ megacli -CfgForeign -Import -aAll
+
+The logical volume should become available again, and the beeping should stop.  You will need to remount the disks:
+
+ service lustre restart
+
+The filesystem should recover gracefully if it has been down for less than a day.
+
+= Lustre configuration =
+
+== CentOS > 6.5 ==
+
+At some point after 6.5 the lustre configuration started provided a new file:
+
+/etc/modprobe.d/ko2iblnd.conf
+
+This file overwrites the built in defaults that all the other lustre systems use. In particular the following error can be found in dmesg:
+
+LNetError: 2658:0:(o2iblnd_cb.c:2641:kiblnd_rejected()) 192.168.0.11@o2ib rejected: incompatible message queue depth 8, 128
+
+This error can be overcome by simply moving the offending file to a new location:
+
+mv /etc/modprobe.d/ko2iblnd.conf /root/modprobe.d/
+
+The restart the system.
+
+== Metadata ==
+
+The lustre metadata server is hazel.  Hazel is located on the bottom of the second rack from the left, near the Infiniband switch.  Hazel is responsible for two filesystems:
+
+* $HAWCROOT: located on /dev/sdb
+* /lustre/scratch: located on /dev/sdc1
+
+Note that /dev/sdb additionally has the management configuration, and mounting /dev/sdb starts the Lustre management server.  You cannot bring the scratch filesystem online without having *both* /dev/sdb and /dev/sdc1 mounted, and you should always mount /dev/sdb first.
+
+=== Backups ===
+
+Both /dev/sdb and /dev/sdc1 are backed up weekly by /etc/cron.weekly/lustrebackup.pl.  The script does two things:
+
+1. Does a raw device-level backup of /dev/sdb and /dev/sdc1 and writes compressed images to /mnt/backup (/dev/sdc2)
+2. Copies the images to /data/lustrebackup
+
+The backups are now done live (with the FS mounted) due to the Lustre 2.4.0 issues that bring down the whole FS if the MDT is unmounted.  This means that the backup images are corrupt and need to be recovered with fsck if you need to use one.  I recommend trying again to unmount/mount the volume with Lustre 2.4.1 (uncomment the mount/umount lines in /etc/cron.weekly/lustrebackup.pl).
+
+== OSTs ==
+
+Lustre object data disks are on walnut, chestnut and almond.  To format a new Lustre disk, do:
+
+ mkfs.lustre --ost --fsname=hawclust --mgsnode=172.16.175.154@tcp0 --mountfsoptions="stripe=1280" /dev/sdX
+
+for a filesystem that will be mounted on $HAWCROOT.  For a filesystem mounted on scratch, specify "--fsname=scratch" instead.  The stripe parameter is the number of blocks per RAID stripe.  For 512k stripes, each disk has 512k/4k = 128 blocks.  For a 12-disk RAID6, there are 10 data disks, so therefore 1280 blocks per stripe.  The filesystem will get a name when it is first mounted.  I usually do:
+
+ mount -t lustre /dev/sdX /mnt/test
+ tail -10 /var/log/messages (to figure out the new name)
+ umount /mnt/test
+ mkdir /mnt/hawclust-OSTXXXX
+
+Then add the filesystem mount-by-label to the Lustre init script, described below:
+
+=== Mounting OST File Systems (IMPORTANT) ===
+
+The OSTs are mounted at start up in /etc/init/d/lustre.  If you add new file systems, you need to place an entry in this file.  Additionally, if you upgrade Lustre, the upgrade will overwrite this file.  If this bothers you, copy the file elsewhere and replace after the upgrade, or rename it so there is no issue in the future.
+
+== Mounting the Lustre File System ==
+
+On compute nodes, the Lustre file system is mounted at start up in /etc/init.d/lustre.  If you need to mount the file system manually, do:
+
+ mount -t lustre 172.16.175.154:/scratch /lustre/scratch
+ mount -t lustre 172.16.175.154:/hawclust /lustre/hawc01
+
+== NFS Export ==
+
+Both $HAWCROOT and /lustre/scratch are exported via NFS from aspen10.  This allows access from pa-pub, baobab, your local machine, etc.  If you restart lustre on aspen10, you must also restart nfs afterward.
+
+== Standard $HAWCROOT crash ==
+
+The standard crash manifests with e.g.:
+
+ jbraun@sequoia:/lustre/hawc01/rsync 512]$ ls
+ ls: cannot access tmp: No such file or directory
+ corsika  g4sim  hawcsim  tmp
+
+In the past, this crash has beer resolved by unmounting all of the clients and then restarting the MDS/MGS on hazel.  I recommend first forcing the eviction of clients on hazel because this may restore the filesystem without unmounting the clients.  Note that this will disrupt all processes using the Lustre file system.  On hazel:
+
+ umount -f /dev/sdc1
+ umount -f /dev/sdb
+
+Wait a few seconds, then remount with
+
+ mount -a
+
+If you tail -f /var/log/messages on a client, you should see messages indicating disconnection, then eviction, then reconnection to the MDS/MGS.  At this point, the filesystem should be restored.  If this does not work, you need to take down the Lustre clients manually.  On each client (including pa-data), kill processes using the Lustre file system.  This is easy with lsof:
+
+ lsof | grep lustre | awk '{print $2}' | xargs -I{} kill -9 {}
+
+If Lustre is in a non-responding state, then lsof will hang.  You'll have to identify the processes manually or reboot the client.  Then stop the Lustre file system:
+
+ service lustre stop
+
+When this is complete, unmount/remount the MDTs on hazel:
+
+ umount /dev/sdc1
+ umount /dev/sdb
+ mount -a
+
+Remount all of the clients.  The Lustre file system will be back up.
+
+== Missing Files ==
+
+Files that are lost in the underlying filesystem manifest the following way:
+
+ ls: cannot access corsika_HAWC300-20130226_gamma_018943.gz: Cannot allocate memory
+
+If there is hardware corruption, running fsck on the affected OST might find files and move them to lost+found.  There is a utility to restore these files (you'll have to google for it), but I've never used it.  Most likely, this is a Lustre issue and the files are unrecoverable.
+
+= $HAWCROOT on pa-data =
+$HAWCROOT does not come up automatically when rebooting pa-data.  You have to do it manually (I planned to eventually write a Debian init script for it, but I never got around to it):
+
+ mount -t lustre 172.16.175.154:/scratch /lustre/scratch
+ mount -t lustre 172.16.175.154:/hawclust /lustre/hawc01
+
+= Installing new machines =
+
+These are the instruction for installing CentOS, Lustre, Infiniband. Skip steps that don't apply.
+
+1) Update Nameserver and DHCP server to accommodate the new server's GB interface. 
+   If this is a new machine, then you will need to add it to netgroup to pick up NFS mounts.
+
+2) Install CentOS 6.6 using URL (http://archive.kernel.org/centos-vault/6.6/os/x86_64/). 
+   Configure the system for "Basic Server".
+
+3) Run automated UMD environment configuration script:
+
+  scp root@baobab:/export/disk01/software/setup/setup_files/setup.server.sh .
+  ./setup_server.sh
+
+This script will take about 10min to run and require you to type the root password about 7 times.
+
+4) To support Luster, follow instructions here (https://wiki.hpdd.intel.com/display/PUB/Walk-thru-+Deploying+Lustre+pre-built+RPMs). You will create a lustre.repo file and install a luster kernel. Note, the repo path is /etc/yum.repo.d. Note that you may need to make sure that the luster kernel is used after updates. Edit /etc/grub.conf to select the default kernel to be executed on boot.
+
+5) For Infiniband, follow the instructions in this file:
+
+  root@baobab:/export/disk01/software/setup/setup_files/setup.infiniband.sh
+
+Infiniband does not work properly unless you remove /etc/modprobe.d/ko2iblnd.conf. This is a new feature
+of the installer and contains settings which are in conflict with existing servers.
+
+6) Turn off 'firstboot': 
+
+  chkconfig firstboot off
+
+7) Set system type: /etc/SYSTEMTYPE: H - HAWC, C- Compute Node, D - Data server, W - Workstation
+
+  echo "HC" > /etc/SYSTEMTYPE
+
+8) Set Message of the Day:
+
+  vi /etc/motd # should be name of server
+
+9) Set auto.master to use _ib if infiniband node.
+
+10) If the machine will be used as a compute node (aspen), then it will need to have a scratch disk. Assuming the disk is 
+/dev/sdb, these commands will set it up. But first, use fdisk to create partition sdb1.
+
+  mkfs.ext4 -m 0 /dev/sdb1
+  e2label /dev/sdb1 local
+  mkdir /local
+  echo "LABEL=local             /local                  ext4    defaults        1 2" >> /etc/fstab
+  mount -a 
+  chmod 1777 /local
+
+
+11) Install Slurm.
+
+12) For Infiniband nodes, mount volumes on boot: add to rc.local:
+
+ # mount Lustre file systems
+ /disk01/software/setup/lustre/MountLustre 
+
+Finally, if you need to reboot a Lustre/IB node, it will hang on unmounting Lustre due to bugs, unmount using the magic killer death reboot:
+
+  echo b > /proc/sysrq-trigger
+
+== Install MegaCli - for disk servers == 
+ 
+* Install megacli, the LSI Megaraid utility: 
+
+  rpm -ivh /data/disk01/software/megaraid/*.rpm
+
+* Put megacli in root's path: 
+
+  ln -s /opt/MegaRAID/VmwareKL/MegaCliKL /usr/local/bin/megacli
+
+* You will need these packages for MegaCli: 
+
+  yum -y install glibc.i686 libncurses.so.5 libstdc++.so.6
+
+= Infiniband =
+
+The Infiniband network is limited to the data servers and the Aspen nodes. We use QDR infiniband which has a maximum theoretical throughput of 40Gbits, or 40 times the speed of a standard Ethernet connection. 
+
+== Setup ==
+
+The Infiniband network is connected through a separate private interface with address space 192.168.0.0/8. 
+
+For setup of a computer on the Infiniband network, see the instruction in the file: root@baobab:/export/disk01/software/setup/setup_files/setup.infiniband.sh.
+
+The network addresses are all hard coded. There is no DHCP or even name server. Addresses 101+ are used for the Aspen nodes, with aspenXX address set to 192.168.0.(100+XX). 
+
+The servers have the following addresses:
+
+{| class="wikitable"
+|-
+! Address 
+! Machine
+|-
+| 192.168.0.1 
+| Walnut
+|-
+| 192.168.0.2
+| Almond
+|-
+| 192.168.0.3
+| Chestnut
+|-
+| 192.168.0.4
+| Cashew
+|-
+| 192.168.0.5
+| Brazil
+|-
+| 192.168.0.6
+| Pecan
+|-
+| 192.168.0.7
+| Pine
+|-
+| 192.168.0.8
+| Macadamia
+|-
+| 192.168.0.9
+| Pistachio
+|-
+| 192.168.0.10
+| Beech
+|-
+| 192.168.0.11
+| Elm
+|-
+| 192.168.0.12
+| Hickory
+|-
+| 192.168.0.13
+| Oak
+|-
+| 192.168.0.14
+| available
+|-
+| 192.168.0.15
+| Hazel
+|-
+| 192.168.0.16
+| Sequoia
+|-
+| 192.168.0.17
+| Spruce
+|-
+| 192.168.0.18
+| Cedar
+|-
+| 192.168.0.19
+| Willow
+|-
+| 192.168.0.35
+| Mckenzie
+|}
+
+The Infiniband network carries only Lustre data traffic on connected nodes.  The addresses are set statically on the 192.168.0/8 network.  Critical setup information is in root@baobab:/export/disk01/software/setup/setup_files/setup.infiniband.sh.
+
+== OPENSM (IMPORTANT!) ==
+
+The subnet manager is running on walnut. This software performs the routing lookups for infiniband. 
+If you take walnut out of service, the Infiniband network will no longer function.  All you need to do if you intend to remove walnut (not 100% certain anymore) is start opensm on a different node on the network.
+
+= Virtual machines on our public server =
+
+Existing VMs:
+* hawcmon.umd.edu (Tilan's monitoring DB)
+* hawcdb.umd.edu (reconstruction database)
+* hawc.umd.edu (the new webserver that is yet to be installed)
+
+These VMs have the standard root password, but root ssh and password ssh are turned off.  You have to open a session through the host OS:
+
+* ssh to falconer
+* become root
+* start the session:
+
+ root@falconer:~# xm console hawc.umd.edu
+ CentOS release 6.4 (Final)
+ Kernel 2.6.32-358.14.1.el6.x86_64 on an x86_64
+ hawc.umd.edu login:
+
+To see the available VMs, look in /etc/xen:
+
+ root@falconer:~# ls /etc/xen
+ hawcdb.umd.edu.cfg   scripts		      xend-pci-quirks.sxp
+ hawcmon.umd.edu.cfg  xend-config.sxp	      xl.conf
+ hawc.umd.edu.cfg     xend-pci-permissive.sxp
+
+== Installation of new VMs ==
+
+Create an image with 2 virtual CPUs, 70 GB disk space, 2 GB swap, 4 GB memory, IP address=129.2.XX.YY, hostname=hawcXXX.umd.edu:
+
+ xen-create-image --vcpus=2 --size=70G --swap=2G --memory=4G --pygrub --ip=129.2.XX.YY --netmask=255.255.252.0 --broadcast=129.2.43.255 --nameserver=128.8.74.2 --gateway=129.2.40.1 --hostname=hawcXXX.umd.edu
+
+After the image is generated, the VM can be instantiated with the command 
+ 
+ vm create -c /etc/xen/NAME.cfg
+
+Open a session on the new VM.
+Edit /etc/ssh/sshd_config and set the following:
+
+ PermitRootLogin no
+ PasswordAuthentication no
+ PubkeyAuthentication yes
+
+Copy hawc.umd.edu /etc/sysconfig/iptables and overwrite /etc/sysconfig/iptables to set firewall rules
+
+Install needed packages:
+
+ yum -y install sudo libotf vim emacs autofs ypbind gcc gcc-c++ python perl man wget python-devel libXpm-devel libXext-devel bzip2-devel zlib-devel libXft-devel mysql mysql-server cronie ntp unzip rsync yum-utils patch php php-dom lm_sensors uuid-devel libuuid-devel OpenIPMI freeipmi ipmitool screen opensm rdma infiniband-diags sg3_utils openmpi libXt-devel expat-devel freeglut-devel libXmu-devel qt4 qt4-devel ld-linux.so.2 zsh expect readline readline-devel lapack lapack-devel tcl tk tcl-devel tk-devel uuid-devel libuuid-devel
+ yum -y groupinstall "Development Tools"
+ yum -y groupinstall "X Window System"
+ yum -y update
+
+Turn on or restart appropriate services:
+
+ /sbin/chkconfig --level 345 ntpd on
+ /sbin/chkconfig --level 345 iptables on
+ /sbin/service iptables restart
+ /sbin/service network restart
+ /sbin/service ntpd restart
+ /sbin/service sshd restart
+
+= Quotas =
+
+Users have a quota on their home directory usage.  A user can view their quota status with
+
+ [jbraun@sequoia:~ 638]$ quota
+ Disk quotas for user jbraun (uid 884): 
+      Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+ baobab:/export/disk01
+                 41654272  60000000 70000000          209708  1000000 1100000
+
+* blocks: KB used in the filesystem
+* quota: Soft quota. Threshold, in KB, that can be surpassed for 7 days before the user is no longer able to create/edit files
+* limit: Hard quota, in KB. A user cannot create or edit files if at the hard quota
+
+* files: Number of files in the filesystem belonging to the user.
+* quota: Soft files quota.
+* limit: Hard files quota.
+
+To see quotas for all users, do:
+
+ [root@baobab jbraun]# repquota -u /export/disk01/
+ Block grace time: 7days; Inode grace time: 7days
+                         Block limits                File limits
+ User            used    soft    hard  grace    used  soft  hard  grace
+ ----------------------------------------------------------------------
+ root      -- 13328200       0       0           1695     0     0       
+ nfsnobody --   79996       0       0           3390     0     0       
+ jbraun    -- 41654276 60000000 70000000         209708 1000000 1100000       
+ chuan     -- 3207320 20000000 30000000           7382 1000000 1100000
+
+Zero limits indicate no quota is in place.  <b>NEW USERS HAVE NO QUOTA BY DEFAULT.  YOU HAVE TO ENABLE IT.</b>    
+
+== Changing a quota ==
+
+As root on baobab, do:
+
+ [root@baobab jbraun]# edquota jbraun
+
+Update the fields and save.  The changes will be propagated to the database.
+
+== Over Quota ==
+
+admin@umdgrb.umd.edu receives a message when a user goes over quota.  The messaging configuration is in /etc/warnquota.conf on baobab, and warnquota is run daily by cron.
+
+= Gluster =
+
+There are 4 Gluster servers: cashew, pecan, pine and brazil. Each server is attached to 2 24 bay enclosures. Each enclosure is configured as a single RAID6 volume with a single hot spare using 4TB disks. The total usable space on each array is 21*4 = 84TB.
+
+== Configuring a disk and adding to Gluster ==
+
+Begin with a blank partition (/dev/sdx). Format the volume as xfs.
+
+  [root@server]# mkfs.xfs -i size=512 -l size=64m /dev/sdx1
+
+If the partition already contains a filesystem, then a '-f' flag is also needed to force the xfs formatting.
+
+  [root@server]# mkfs.xfs -f -i size=512 -l size=64m /dev/sdx1
+ 
+Now examine the volume label and UUID with the command:
+
+  [root@server]# xfs_admin -lu /dev/sdx1
+
+Edit the fstab to mount the volume using the UUID target:
+
+  UUID=f2360a8c-16e3-4131-a779-1df4a7cf9615	/export/server-targetN	xfs	rw,noatime,nodiratime,logbufs=8	0	0
+
+Create mount point if it is not there already and mount the volume. 
+
+Then create a gluster directory. It is recommended that this not be the top directory of the volume.
+
+  [root@server]# mkdir /export/server-targetN/glust
+
+Now add the partition to the gluster system. This example assumes I am adding the partition to a gluster volume called 'hawc-data'
+and the IP address of the server is 192.168.X.X.
+
+  [root@server]# gluster volume add-brick hawc-data 192.168.X.X:/export/server-targetN/glust
+
+== Removing a disk from Gluster ==
+
+A partition (brick) can be removed from Gluster with the following command:
+
+  [root@server]# gluster volume remove-brick hawc-data 192.168.X.X:/export/server-targetN/glust start
+
+The system will then copy the data off the brick that is being removed. You can check the status
+with the command:
+
+  [root@server]# gluster volume remove-brick hawc-data 192.168.X.X:/export/server-targetN/glust status
+
+When the brick removal is identified as complete, issue the command:
+
+  [root@server]# gluster volume remove-brick hawc-data 192.168.X.X:/export/server-targetN/glust commit
+
+This will actually remove the brick from the Gluster volume. It will warn you that it may result in 
+data loss and give you the option to proceed or not.
+
+=Backup and Recovery=
+

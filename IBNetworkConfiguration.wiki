@@ -1,0 +1,38 @@
+This page describes the infiniband network configuration:
+
+Main switch is in rack F10 and is called [http://ibswitch1/index.html ibswitch1]
+This switch is a 36-port Qlogic (Intel) model 12300 bs01 and is running a network manager.
+
+The 2nd switch is located in rack F06 and is called [http://ibswitch4/index.html ibswitch4]
+This switch is a 36-port Qlogic (Intel) model 12300 bs01 and is NOT running a network manager.
+
+
+Static IP addresses on IB network:
+
+Lustre 2.8 Network:
+  192.168.1.1      Hazel (MDS, MDT)
+
+  192.178.1.2      Pine (OSS for HAWC01/SCR01)
+  192.168.1.3      Cashew (OSS for HAWC01/SCR01)
+  192.168.1.4      Brazil (OSS for HAWC01/SCR01)
+  192.168.1.5      Pecan (OSS for HAWC01/SCR01)
+
+  192.168.1.6      Cedar (OSS for HAWC02)
+  192.168.1.7      Spruce (OSS for HAWC02)
+  192.168.1.8      Willow (OSS for HAWC02)
+
+  192.168.1.9      Almond (OSS for HAWC03)
+  192.168.1.10     Chestnut (OSS for HAWC03)
+  192.168.1.11     Hickory (OSS for HAWC03)
+  192.168.1.12     Oak (OSS for HAWC03)
+
+  192.168.1.13     Beech (OSS for HAWC04)
+  192.168.1.14     Pistachio (OSS for HAWC04)
+  192.168.1.15     Macadamia (OSS for HAWC04)
+
+  192.168.1.40     Walnut (NFS Server for Lustre disks)
+  192.168.1.41     Mckenzie (Slurm head node)
+  192.168.1.42     Sequoia (Play area)
+
+  192.168.1.1XX    AspenXX
+
